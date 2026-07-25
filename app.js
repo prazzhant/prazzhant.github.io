@@ -40,11 +40,25 @@
     return div.innerHTML;
   }
 
+  function renderInline(text) {
+    // Turn ![alt](url) into an <img>; escape everything else.
+    var parts = text.split(/(!\[[^\]]*\]\([^)]+\))/g);
+    return parts.map(function (part) {
+      var m = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(part);
+      if (m) {
+        var alt = escapeHtml(m[1]);
+        var url = escapeHtml(m[2]);
+        return '<img src="' + url + '" alt="' + alt + '" loading="lazy">';
+      }
+      return escapeHtml(part).replace(/\n/g, "<br>");
+    }).join("");
+  }
+
   function renderBody(content) {
     return content
       .split(/\n\s*\n/)
       .map(function (para) {
-        return "<p>" + escapeHtml(para).replace(/\n/g, "<br>") + "</p>";
+        return "<p>" + renderInline(para) + "</p>";
       })
       .join("");
   }
