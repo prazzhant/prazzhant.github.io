@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>New Entry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500;600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="admin-wrap">
+  <h1 class="admin-title">New entry</h1>
+  <p class="admin-note">Publishes straight to your GitHub repo. Takes a few seconds.</p>
+
+  <button id="settingsToggle" class="settings-toggle" type="button">Connection settings</button>
+
+  <div id="settingsCard" class="admin-card" style="display:none;">
+    <label class="field-label" for="fOwner">GitHub username</label>
+    <input class="field-input" id="fOwner" type="text" autocomplete="off" placeholder="e.g. jdoe">
+
+    <label class="field-label" for="fRepo">Repository name</label>
+    <input class="field-input" id="fRepo" type="text" autocomplete="off" placeholder="e.g. my-blog">
+
+    <label class="field-label" for="fBranch">Branch</label>
+    <input class="field-input" id="fBranch" type="text" autocomplete="off" placeholder="main">
+
+    <label class="field-label" for="fToken">Personal access token</label>
+    <input class="field-input" id="fToken" type="password" autocomplete="off" placeholder="ghp_...">
+
+    <button id="saveSettings" class="btn" type="button">Save settings</button>
+    <p class="admin-note" style="margin-top:12px;margin-bottom:0;">
+      Create a token at github.com → Settings → Developer settings → Personal access tokens
+      (fine-grained). Give it read/write access to <strong>Contents</strong> for this one
+      repository only. The token is stored solely in this phone's browser — it's never
+      committed anywhere.
+    </p>
+  </div>
+
+  <div class="admin-card">
+    <label class="field-label" for="fTitle">Heading</label>
+    <input class="field-input field-title" id="fTitle" type="text" placeholder="Today's heading" autofocus>
+
+    <label class="field-label" for="fContent">Entry</label>
+    <textarea class="field-textarea" id="fContent" placeholder="Write here…"></textarea>
+
+    <button id="publishBtn" class="btn" type="button">Publish</button>
+    <button id="viewSiteBtn" class="btn btn-secondary" type="button">View site</button>
+    <div id="statusMsg" class="status-msg"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var POSTS_PATH = "posts.json";
+  var els = {
+    owner: document.getElementById("fOwner"),
+    repo: document.getElementById("fRepo"),
+    branch: document.getElementById("fBranch"),
+    token: document.getElementById("fToken"),
+    title: document.getElementById("fTitle"),
+    content: document.getElementById("fContent"),
+    publishBtn: document.getElementById("publishBtn"),
+    viewSiteBtn: document.getElementById("viewSiteBtn"),
+    status: document.getElementById("statusMsg"),
+    settingsToggle: document.getElementById("settingsToggle"),
+    settingsCard: document.getElementById("settingsCard"),
+    saveSettings: document.getElementById("saveSettings")
+  };
+
+  function getSettings() {
+    return {
+      owner: localStorage.getItem("blog_owner") || "",
+      repo: localStorage.getItem("blog_repo") || "",
+      branch: localStorage.getItem("blog_branch") || "main",
+      token: localStorage.getItem("blog_token") || ""
+    };
+  }
+
+  function settingsComplete(s) {
+    return !!(s.owner && s.repo && s.token);
+  }
+
+  function loadSettingsIntoForm() {
+    var s = getSettings();
+    els.owner.value = s.owner;
+    els.repo.value = s.repo;
+    els.branch.value = s.branch;
+    els.token.value = s.token;
+    if (!settingsComplete(s)) {
+      els.settingsCard.style.display = "block";
+    }
+  }
+
+  els.settingsToggle.addEventListener("click", function () {
+    els.settingsCard.style.display = els.settingsCard.style.display === "none" ? "block" : "none";
+  });
+
+  els.saveSettings.addEventListener("click", function () {
+    localStorage.setItem("blog_owner", els.owner.value.trim());
+    localStorage.setItem("blog_repo", els.repo.value.trim());
+    localStorage.setItem("blog_branch", els.branch.value.trim() || "main");
+    localStorage.setItem("blog_token", els.token.value.trim());
+    showStatus("Settings saved.", "ok");
+    els.settingsCard.style.display = "none";
+  });
+
+  els.viewSiteBtn.addEventListener("click", function () {
+    var s = getSettings();
+    if (!s.owner || !s.repo) { showStatus("Add your username and repo in settings first.", "err"); return; }
+    window.open("https://" + s.owner + ".github.io/" + s.repo + "/", "_blank");
+  });
+
+  function showStatus(msg, kind) {
+    els.status.textContent = msg;
+    els.status.className = "status-msg show " + kind;
+  }
+
+  function b64EncodeUtf8(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  function b64DecodeUtf8(str) {
+    return decodeURIComponent(escape(atob(str)));
+  }
+
+  function ghHeaders(token) {
+    return {
+      "Authorization": "Bearer " + token,
+      "Accept": "application/vnd.github+json",
+      "Content-Type": "application/json"
+    };
+  }
+
+  els.publishBtn.addEventListener("click", function () {
+    var s = getSettings();
+    if (!settingsComplete(s)) {
+      showStatus("Fill in connection settings first.", "err");
+      els.settingsCard.style.display = "block";
+      return;
+    }
+    var title = els.title.value.trim();
+    var content = els.content.value.trim();
+    if (!title || !content) {
+      showStatus("Add a heading and some text.", "err");
+      return;
+    }
+
+    els.publishBtn.disabled = true;
+    showStatus("Publishing…", "ok");
+
+    var apiUrl = "https://api.github.com/repos/" + s.owner + "/" + s.repo + "/contents/" + POSTS_PATH;
+
+    fetch(apiUrl + "?ref=" + encodeURIComponent(s.branch), { headers: ghHeaders(s.token) })
+      .then(function (res) {
+        if (res.status === 404) return { notFound: true };
+        if (!res.ok) return res.json().then(function (e) { throw new Error(e.message || "GET failed (" + res.status + ")"); });
+        return res.json();
+      })
+      .then(function (fileData) {
+        var posts = [];
+        var sha = null;
+        if (!fileData.notFound) {
+          sha = fileData.sha;
+          try {
+            posts = JSON.parse(b64DecodeUtf8(fileData.content));
+          } catch (e) {
+            posts = [];
+          }
+        }
+
+        posts.unshift({
+          id: Date.now().toString(36),
+          title: title,
+          date: new Date().toISOString(),
+          content: content
+        });
+
+        var body = {
+          message: "New entry: " + title,
+          content: b64EncodeUtf8(JSON.stringify(posts, null, 2)),
+          branch: s.branch
+        };
+        if (sha) body.sha = sha;
+
+        return fetch(apiUrl, {
+          method: "PUT",
+          headers: ghHeaders(s.token),
+          body: JSON.stringify(body)
+        }).then(function (res) {
+          if (!res.ok) return res.json().then(function (e) { throw new Error(e.message || "PUT failed (" + res.status + ")"); });
+          return res.json();
+        });
+      })
+      .then(function () {
+        showStatus("Published. It'll be live in a minute or two.", "ok");
+        els.title.value = "";
+        els.content.value = "";
+        els.title.focus();
+      })
+      .catch(function (err) {
+        showStatus("Couldn't publish: " + err.message, "err");
+      })
+      .finally(function () {
+        els.publishBtn.disabled = false;
+      });
+  });
+
+  loadSettingsIntoForm();
+})();
+</script>
+</body>
+</html>
