@@ -46,6 +46,14 @@
     <label class="field-label" for="fContent">Entry</label>
     <textarea class="field-textarea" id="fContent" placeholder="Write here…"></textarea>
 
+    <label class="field-label" for="fCategory">Folder</label>
+    <select class="field-input" id="fCategory">
+      <option value="general">General</option>
+      <option value="anime">Anime</option>
+      <option value="movies">Movies</option>
+      <option value="webseries">Web series</option>
+    </select>
+
     <div class="photo-row">
       <input type="file" id="fPhoto" accept="image/*" style="display:none;">
       <button id="photoBtn" class="btn-photo" type="button">📷 Add photo</button>
@@ -77,6 +85,7 @@
     token: document.getElementById("fToken"),
     title: document.getElementById("fTitle"),
     content: document.getElementById("fContent"),
+    category: document.getElementById("fCategory"),
     photoInput: document.getElementById("fPhoto"),
     photoBtn: document.getElementById("photoBtn"),
     publishBtn: document.getElementById("publishBtn"),
@@ -205,7 +214,8 @@
           id: Date.now().toString(36),
           title: title,
           date: new Date().toISOString(),
-          content: content
+          content: content,
+          category: els.category ? els.category.value : "general"
         });
 
         var body = {
@@ -228,6 +238,7 @@
         showStatus(els.status, "Published. It'll be live in a minute or two.", "ok");
         els.title.value = "";
         els.content.value = "";
+        if (els.category) els.category.value = "general";
         els.title.focus();
       })
       .catch(function (err) {
@@ -309,6 +320,11 @@
   });
 
   var MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var CATEGORY_LABELS = { general: "General", anime: "Anime", movies: "Movies", webseries: "Web series" };
+
+  function categoryOf(post) {
+    return post.category && CATEGORY_LABELS[post.category] ? post.category : "general";
+  }
 
   function renderManageList() {
     if (!currentPosts || currentPosts.length === 0) {
@@ -334,6 +350,19 @@
       info.appendChild(t);
       info.appendChild(dt);
 
+      var catSelect = document.createElement("select");
+      catSelect.className = "manage-item-cat";
+      Object.keys(CATEGORY_LABELS).forEach(function (key) {
+        var opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = CATEGORY_LABELS[key];
+        if (key === categoryOf(post)) opt.selected = true;
+        catSelect.appendChild(opt);
+      });
+      catSelect.addEventListener("change", function () {
+        updateCategory(post.id, catSelect.value);
+      });
+
       var delBtn = document.createElement("button");
       delBtn.className = "btn-delete";
       delBtn.type = "button";
@@ -341,6 +370,7 @@
       delBtn.addEventListener("click", function () { deleteEntry(post.id, post.title); });
 
       row.appendChild(info);
+      row.appendChild(catSelect);
       row.appendChild(delBtn);
       els.manageList.appendChild(row);
     });
@@ -380,6 +410,44 @@
         els.loadEntriesBtn.textContent = "Load entries";
       });
   });
+
+  function updateCategory(id, newCategory) {
+    var s = getSettings();
+    if (currentSha == null) {
+      showStatus(els.manageStatus, "Tap \"Load entries\" again first.", "err");
+      return;
+    }
+
+    var updated = currentPosts.map(function (p) {
+      return p.id === id ? Object.assign({}, p, { category: newCategory }) : p;
+    });
+
+    showStatus(els.manageStatus, "Moving…", "ok");
+
+    fetch(contentsUrl(s, POSTS_PATH), {
+      method: "PUT",
+      headers: ghHeaders(s.token),
+      body: JSON.stringify({
+        message: "Move entry to " + newCategory,
+        content: b64EncodeUtf8(JSON.stringify(updated, null, 2)),
+        branch: s.branch,
+        sha: currentSha
+      })
+    })
+      .then(function (res) {
+        if (!res.ok) return res.json().then(function (e) { throw new Error(e.message || "Move failed (" + res.status + ")"); });
+        return res.json();
+      })
+      .then(function (result) {
+        if (result && result.content && result.content.sha) currentSha = result.content.sha;
+        currentPosts = updated;
+        showStatus(els.manageStatus, "Moved to " + CATEGORY_LABELS[newCategory] + ".", "ok");
+      })
+      .catch(function (err) {
+        showStatus(els.manageStatus, "Couldn't move: " + err.message, "err");
+        renderManageList();
+      });
+  }
 
   function deleteEntry(id, title) {
     var s = getSettings();
