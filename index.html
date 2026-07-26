@@ -48,9 +48,27 @@
     <button id="themeToggle" class="theme-toggle" type="button">☾ Dark</button>
   </header>
 
-  <div class="search-wrap">
+  <div class="toolbar">
+    <button id="foldersBtn" class="folder-btn" type="button">☰ Folders</button>
     <input id="searchBox" type="search" class="search-input" placeholder="Search your entries…" autocomplete="off">
   </div>
+  <div id="activeFolder" class="active-folder" style="display:none;">
+    <span id="activeFolderLabel"></span>
+    <button id="clearFolder" type="button">✕ clear</button>
+  </div>
+
+  <div id="drawerBackdrop" class="drawer-backdrop"></div>
+  <nav id="drawer" class="drawer" aria-label="Folders">
+    <div class="drawer-head">
+      <span class="drawer-title">Folders</span>
+      <button id="drawerClose" class="drawer-close" type="button">✕</button>
+    </div>
+    <button class="drawer-item" data-folder="all">All entries</button>
+    <button class="drawer-item" data-folder="general">General</button>
+    <button class="drawer-item" data-folder="anime">Anime</button>
+    <button class="drawer-item" data-folder="movies">Movies</button>
+    <button class="drawer-item" data-folder="webseries">Web series</button>
+  </nav>
 
   <main id="feed" aria-live="polite">
     <div class="empty-state">Loading entries…</div>
