@@ -151,13 +151,32 @@ a { color: var(--accent); }
 
 .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ---------- Search ---------- */
-.search-wrap {
+/* ---------- Toolbar / search ---------- */
+.toolbar {
+  display: flex;
+  gap: 8px;
   padding: 18px 0 4px;
 }
 
+.folder-btn {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  background: none;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 11px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.folder-btn:hover { border-color: var(--accent); color: var(--accent); }
+
 .search-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-body);
   font-size: 0.95rem;
   color: var(--ink);
@@ -169,8 +188,29 @@ a { color: var(--accent); }
 
 .search-input::placeholder { color: var(--ink-faint); }
 .search-input:focus { border-color: var(--accent); }
-
 .search-input::-webkit-search-cancel-button { cursor: pointer; }
+
+.active-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.active-folder button {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0;
+}
 
 .search-results-heading {
   font-family: var(--font-mono);
@@ -186,6 +226,86 @@ mark {
   color: var(--accent-ink);
   border-radius: 3px;
   padding: 0 2px;
+}
+
+/* ---------- Folders drawer ---------- */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 40;
+}
+
+.drawer-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 78%;
+  max-width: 280px;
+  background: var(--bg);
+  border-right: 1px solid var(--rule);
+  transform: translateX(-105%);
+  transition: transform 0.25s ease;
+  z-index: 41;
+  padding: 24px 18px;
+  overflow-y: auto;
+}
+
+.drawer.open { transform: translateX(0); }
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.drawer-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.drawer-close {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.drawer-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  color: var(--ink);
+  padding: 12px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.drawer-item:hover { background: var(--rule); }
+
+.drawer-item.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 500;
 }
 
 /* ---------- Month groups (the "ledger tabs") ---------- */
@@ -253,6 +373,21 @@ details[open] > .month-summary::before {
   letter-spacing: 0.08em;
   color: var(--accent);
   margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.entry-category {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 1px 8px;
 }
 
 .entry-title {
@@ -457,6 +592,17 @@ details[open] > .month-summary::before {
   font-size: 0.68rem;
   color: var(--ink-faint);
   margin-top: 2px;
+}
+
+.manage-item-cat {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  padding: 6px 8px;
+  flex-shrink: 0;
 }
 
 .btn-delete {
