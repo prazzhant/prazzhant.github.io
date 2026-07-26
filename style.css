@@ -530,6 +530,37 @@ details[open] > .month-summary::before {
   margin-bottom: 24px;
 }
 
+.edit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(47,111,98,0.12);
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.edit-banner span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-banner button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
 .settings-toggle {
   background: none;
   border: none;
@@ -570,13 +601,19 @@ details[open] > .month-summary::before {
 
 .manage-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
-  padding: 12px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--rule);
 }
 
-.manage-item-info { flex: 1; min-width: 0; }
+.manage-item-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.manage-item-info { min-width: 0; }
 
 .manage-item-title {
   font-family: var(--font-body);
@@ -602,6 +639,22 @@ details[open] > .month-summary::before {
   border: 1px solid var(--rule-strong);
   border-radius: 6px;
   padding: 6px 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-edit {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
   flex-shrink: 0;
 }
 
