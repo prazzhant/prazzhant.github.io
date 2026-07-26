@@ -84,13 +84,26 @@
     return day + " " + mon + " " + d.getFullYear() + " · " + hh + ":" + mm;
   }
 
+  var FOLDER_LABELS = {
+    all: "All entries",
+    general: "General",
+    anime: "Anime",
+    movies: "Movies",
+    webseries: "Web series"
+  };
+
+  function categoryOf(post) {
+    return post.category && FOLDER_LABELS[post.category] ? post.category : "general";
+  }
+
   function entryHtml(post, term) {
     var d = new Date(post.date);
     var titleEscaped = escapeHtml(post.title || "Untitled");
     if (term) titleEscaped = highlight(titleEscaped, escapeHtml(term));
+    var catLabel = FOLDER_LABELS[categoryOf(post)];
     return (
       '<article class="entry">' +
-      '<div class="entry-stamp">' + formatStamp(d) + "</div>" +
+      '<div class="entry-stamp"><span>' + formatStamp(d) + '</span><span class="entry-category">' + catLabel + "</span></div>" +
       '<h2 class="entry-title">' + titleEscaped + "</h2>" +
       '<div class="entry-body">' + renderBody(post.content || "", term) + "</div>" +
       "</article>"
@@ -160,7 +173,74 @@
   function loadPosts() {
     var feed = document.getElementById("feed");
     var searchBox = document.getElementById("searchBox");
+    var foldersBtn = document.getElementById("foldersBtn");
+    var drawer = document.getElementById("drawer");
+    var drawerBackdrop = document.getElementById("drawerBackdrop");
+    var drawerClose = document.getElementById("drawerClose");
+    var activeFolder = document.getElementById("activeFolder");
+    var activeFolderLabel = document.getElementById("activeFolderLabel");
+    var clearFolder = document.getElementById("clearFolder");
+    var drawerItems = document.querySelectorAll(".drawer-item");
+
     var allPosts = [];
+    var currentCategory = "all";
+
+    function openDrawer() {
+      drawer.classList.add("open");
+      drawerBackdrop.classList.add("open");
+    }
+    function closeDrawer() {
+      drawer.classList.remove("open");
+      drawerBackdrop.classList.remove("open");
+    }
+    if (foldersBtn) foldersBtn.addEventListener("click", openDrawer);
+    if (drawerClose) drawerClose.addEventListener("click", closeDrawer);
+    if (drawerBackdrop) drawerBackdrop.addEventListener("click", closeDrawer);
+
+    function setActiveDrawerItem() {
+      drawerItems.forEach(function (btn) {
+        btn.classList.toggle("active", btn.getAttribute("data-folder") === currentCategory);
+      });
+    }
+
+    function render() {
+      var filtered = currentCategory === "all"
+        ? allPosts
+        : allPosts.filter(function (p) { return categoryOf(p) === currentCategory; });
+
+      var term = searchBox ? searchBox.value.trim() : "";
+      if (term) {
+        renderSearchResults(feed, filtered, term);
+      } else {
+        renderGrouped(feed, filtered);
+        if (filtered.length === 0 && currentCategory !== "all") {
+          feed.innerHTML = '<div class="empty-state">No entries in this folder yet.</div>';
+        }
+      }
+
+      if (currentCategory === "all") {
+        activeFolder.style.display = "none";
+      } else {
+        activeFolder.style.display = "flex";
+        activeFolderLabel.textContent = FOLDER_LABELS[currentCategory];
+      }
+      setActiveDrawerItem();
+    }
+
+    drawerItems.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        currentCategory = btn.getAttribute("data-folder");
+        closeDrawer();
+        render();
+      });
+    });
+
+    if (clearFolder) {
+      clearFolder.addEventListener("click", function () {
+        currentCategory = "all";
+        render();
+      });
+    }
 
     fetch("posts.json", { cache: "no-store" })
       .then(function (res) {
@@ -169,21 +249,14 @@
       })
       .then(function (posts) {
         allPosts = Array.isArray(posts) ? posts : [];
-        renderGrouped(feed, allPosts);
+        render();
       })
       .catch(function (err) {
         feed.innerHTML = '<div class="empty-state">Couldn\'t load entries (' + escapeHtml(err.message) + ").</div>";
       });
 
     if (searchBox) {
-      searchBox.addEventListener("input", function () {
-        var term = searchBox.value.trim();
-        if (!term) {
-          renderGrouped(feed, allPosts);
-        } else {
-          renderSearchResults(feed, allPosts, term);
-        }
-      });
+      searchBox.addEventListener("input", render);
     }
   }
 })();
