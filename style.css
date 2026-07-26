@@ -151,6 +151,43 @@ a { color: var(--accent); }
 
 .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ---------- Search ---------- */
+.search-wrap {
+  padding: 18px 0 4px;
+}
+
+.search-input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 11px 16px;
+}
+
+.search-input::placeholder { color: var(--ink-faint); }
+.search-input:focus { border-color: var(--accent); }
+
+.search-input::-webkit-search-cancel-button { cursor: pointer; }
+
+.search-results-heading {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding: 22px 0 4px;
+}
+
+mark {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
 /* ---------- Month groups (the "ledger tabs") ---------- */
 .month-group {
   border: none;
