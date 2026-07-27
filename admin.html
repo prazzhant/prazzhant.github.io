@@ -112,6 +112,7 @@
   var currentPosts = null;
   var currentSha = null;
   var editingId = null;
+  var pendingPosts = null;
 
   function getSettings() {
     return {
@@ -258,6 +259,8 @@
           });
         }
 
+        pendingPosts = posts;
+
         var body = {
           message: (editingId ? "Edit entry: " : "New entry: ") + title,
           content: b64EncodeUtf8(JSON.stringify(posts, null, 2)),
@@ -274,9 +277,17 @@
           return res.json();
         });
       })
-      .then(function () {
+      .then(function (result) {
         var wasEditing = !!editingId;
         showStatus(els.status, wasEditing ? "Changes saved." : "Published. It'll be live in a minute or two.", "ok");
+        // Keep the Manage-entries list (if already loaded) in sync so a
+        // later edit/delete/move there doesn't use an outdated file version.
+        if (currentPosts !== null && pendingPosts) {
+          currentPosts = pendingPosts;
+          if (result && result.content && result.content.sha) currentSha = result.content.sha;
+          renderManageList();
+        }
+        pendingPosts = null;
         cancelEdit();
         if (!wasEditing) els.title.focus();
       })
@@ -494,7 +505,10 @@
         showStatus(els.manageStatus, "Moved to " + CATEGORY_LABELS[newCategory] + ".", "ok");
       })
       .catch(function (err) {
-        showStatus(els.manageStatus, "Couldn't move: " + err.message, "err");
+        var msg = /does not match/i.test(err.message)
+          ? "This list is out of date. Tap \"Load entries\" to refresh, then try again."
+          : "Couldn't move: " + err.message;
+        showStatus(els.manageStatus, msg, "err");
         renderManageList();
       });
   }
@@ -533,7 +547,10 @@
         if (editingId === id) cancelEdit();
       })
       .catch(function (err) {
-        showStatus(els.manageStatus, "Couldn't delete: " + err.message, "err");
+        var msg = /does not match/i.test(err.message)
+          ? "This list is out of date. Tap \"Load entries\" to refresh, then try again."
+          : "Couldn't delete: " + err.message;
+        showStatus(els.manageStatus, msg, "err");
       });
   }
 
