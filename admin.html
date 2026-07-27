@@ -39,6 +39,11 @@
     </p>
   </div>
 
+  <div id="editBanner" class="edit-banner" style="display:none;">
+    <span id="editBannerText"></span>
+    <button id="cancelEditBtn" type="button">✕ cancel</button>
+  </div>
+
   <div class="admin-card">
     <label class="field-label" for="fTitle">Heading</label>
     <input class="field-input field-title" id="fTitle" type="text" placeholder="Today's heading" autofocus>
@@ -98,11 +103,15 @@
     manageCard: document.getElementById("manageCard"),
     loadEntriesBtn: document.getElementById("loadEntriesBtn"),
     manageList: document.getElementById("manageList"),
-    manageStatus: document.getElementById("manageStatus")
+    manageStatus: document.getElementById("manageStatus"),
+    editBanner: document.getElementById("editBanner"),
+    editBannerText: document.getElementById("editBannerText"),
+    cancelEditBtn: document.getElementById("cancelEditBtn")
   };
 
   var currentPosts = null;
   var currentSha = null;
+  var editingId = null;
 
   function getSettings() {
     return {
@@ -172,7 +181,30 @@
     return "https://api.github.com/repos/" + s.owner + "/" + s.repo + "/contents/" + path;
   }
 
-  /* ---------- Publish a new entry ---------- */
+  function startEdit(post) {
+    editingId = post.id;
+    els.title.value = post.title || "";
+    els.content.value = post.content || "";
+    if (els.category) els.category.value = categoryOf(post);
+    els.publishBtn.textContent = "Save changes";
+    els.editBanner.style.display = "flex";
+    els.editBannerText.textContent = 'Editing: "' + (post.title || "Untitled") + '"';
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    els.title.focus();
+  }
+
+  function cancelEdit() {
+    editingId = null;
+    els.title.value = "";
+    els.content.value = "";
+    if (els.category) els.category.value = "general";
+    els.publishBtn.textContent = "Publish";
+    els.editBanner.style.display = "none";
+  }
+
+  if (els.cancelEditBtn) els.cancelEditBtn.addEventListener("click", cancelEdit);
+
+  /* ---------- Publish a new entry (or save an edit) ---------- */
   els.publishBtn.addEventListener("click", function () {
     var s = getSettings();
     if (!settingsComplete(s)) {
@@ -188,7 +220,7 @@
     }
 
     els.publishBtn.disabled = true;
-    showStatus(els.status, "Publishing…", "ok");
+    showStatus(els.status, editingId ? "Saving…" : "Publishing…", "ok");
 
     var apiUrl = contentsUrl(s, POSTS_PATH);
 
@@ -210,16 +242,24 @@
           }
         }
 
-        posts.unshift({
-          id: Date.now().toString(36),
-          title: title,
-          date: new Date().toISOString(),
-          content: content,
-          category: els.category ? els.category.value : "general"
-        });
+        var category = els.category ? els.category.value : "general";
+
+        if (editingId) {
+          var idx = posts.findIndex(function (p) { return p.id === editingId; });
+          if (idx === -1) throw new Error("That entry couldn't be found anymore — it may have been deleted.");
+          posts[idx] = Object.assign({}, posts[idx], { title: title, content: content, category: category });
+        } else {
+          posts.unshift({
+            id: Date.now().toString(36),
+            title: title,
+            date: new Date().toISOString(),
+            content: content,
+            category: category
+          });
+        }
 
         var body = {
-          message: "New entry: " + title,
+          message: (editingId ? "Edit entry: " : "New entry: ") + title,
           content: b64EncodeUtf8(JSON.stringify(posts, null, 2)),
           branch: s.branch
         };
@@ -235,14 +275,13 @@
         });
       })
       .then(function () {
-        showStatus(els.status, "Published. It'll be live in a minute or two.", "ok");
-        els.title.value = "";
-        els.content.value = "";
-        if (els.category) els.category.value = "general";
-        els.title.focus();
+        var wasEditing = !!editingId;
+        showStatus(els.status, wasEditing ? "Changes saved." : "Published. It'll be live in a minute or two.", "ok");
+        cancelEdit();
+        if (!wasEditing) els.title.focus();
       })
       .catch(function (err) {
-        showStatus(els.status, "Couldn't publish: " + err.message, "err");
+        showStatus(els.status, "Couldn't save: " + err.message, "err");
       })
       .finally(function () {
         els.publishBtn.disabled = false;
@@ -363,15 +402,26 @@
         updateCategory(post.id, catSelect.value);
       });
 
+      var editBtn = document.createElement("button");
+      editBtn.className = "btn-edit";
+      editBtn.type = "button";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", function () { startEdit(post); });
+
       var delBtn = document.createElement("button");
       delBtn.className = "btn-delete";
       delBtn.type = "button";
       delBtn.textContent = "Delete";
       delBtn.addEventListener("click", function () { deleteEntry(post.id, post.title); });
 
+      var controls = document.createElement("div");
+      controls.className = "manage-item-controls";
+      controls.appendChild(catSelect);
+      controls.appendChild(editBtn);
+      controls.appendChild(delBtn);
+
       row.appendChild(info);
-      row.appendChild(catSelect);
-      row.appendChild(delBtn);
+      row.appendChild(controls);
       els.manageList.appendChild(row);
     });
   }
@@ -480,6 +530,7 @@
         currentPosts = updated;
         renderManageList();
         showStatus(els.manageStatus, "Deleted.", "ok");
+        if (editingId === id) cancelEdit();
       })
       .catch(function (err) {
         showStatus(els.manageStatus, "Couldn't delete: " + err.message, "err");
